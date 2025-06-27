@@ -32,3 +32,6 @@ coverage/
 # Build output
 dist/
 build/ 
+
+# Fonts
+fonts/

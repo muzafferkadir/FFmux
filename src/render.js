@@ -2,6 +2,7 @@ import ffmpeg from "fluent-ffmpeg";
 import ffmpegStatic from "ffmpeg-static";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import { TEXT_STYLES, generateDrawTextFilter, escapeText, parseSRT } from "./textStyles.js";
 
 // Use bundled path when provided
 if (process.env.FFMPEG_PATH) {
@@ -34,7 +35,8 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
     quality = "23",
     extension = "mp4",
     timeline = [],
-    scaling = "cover" // Default scaling mode
+    scaling = "cover", // Default scaling mode
+    subtitles = null  // New parameter for SRT content
   } = instructions;
 
   if (!timeline.length) {
@@ -45,6 +47,13 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
   const [width, height] = resolution.split('x').map(Number);
   if (!width || !height) {
     throw new Error("Invalid resolution format. Expected 'widthxheight' (e.g. '1280x720')");
+  }
+
+  // Parse SRT if provided and add to timeline
+  let fullTimeline = [...timeline];
+  if (subtitles) {
+    const subtitleItems = parseSRT(subtitles);
+    fullTimeline = [...timeline, ...subtitleItems];
   }
 
   // Get scaling filter based on mode
@@ -59,7 +68,7 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
   const command = ffmpeg({ stdoutLines: 0 });
 
   // Calculate total duration for progress tracking
-  const totalDuration = timeline.reduce((acc, item) => {
+  const totalDuration = fullTimeline.reduce((acc, item) => {
     if (item.type === "video") {
       const duration = item.cut ? item.cut[1] - item.cut[0] : 0;
       return acc + duration;
@@ -67,11 +76,14 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
     if (item.type === "image") {
       return acc + (item.duration || 5);
     }
+    if (item.type === "text") {
+      return acc + (item.duration || 5);
+    }
     return acc;
   }, 0);
 
   console.log('Starting FFmpeg render with totalDuration:', totalDuration);
-  console.log('Timeline:', JSON.stringify(timeline, null, 2));
+  console.log('Timeline:', JSON.stringify(fullTimeline, null, 2));
 
   // Add inputs and prepare filter complex
   const filterComplex = [];
@@ -81,20 +93,20 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
   let hasAudio = false;
 
   // First add all inputs
-  timeline.forEach((item) => {
-    const filePath = fileMap[item.filename];
-    if (!filePath) {
-      throw new Error(`File not found for ${item.filename}`);
-    }
-
+  fullTimeline.forEach((item, index) => {
     // Get item-specific scaling mode or use default
     const itemScaling = item.scaling || scaling;
     const scalingFilter = getScalingFilter(itemScaling);
     
-    console.log(`Processing ${item.filename} with scaling mode: ${itemScaling}`);
-    console.log(`Scaling filter: ${scalingFilter}`);
-
     if (item.type === "video") {
+      const filePath = fileMap[item.filename];
+      if (!filePath) {
+        throw new Error(`File not found for ${item.filename}`);
+      }
+
+      console.log(`Processing ${item.filename} with scaling mode: ${itemScaling}`);
+      console.log(`Scaling filter: ${scalingFilter}`);
+
       // Add video input
       command.input(filePath)
         .inputOptions([
@@ -105,7 +117,47 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
         ]);
       
       // Video processing with scaling
-      filterComplex.push(`[${inputIndex}:v]${scalingFilter},setsar=1,fps=30[v${inputIndex}]`);
+      let filter = `[${inputIndex}:v]${scalingFilter},setsar=1,fps=30`;
+
+      // Add text overlays that should appear during this video
+      const textsForThisVideo = fullTimeline.filter(t => 
+        t.type === "text" && 
+        t.startTime >= (item.cut ? item.cut[0] : 0) && 
+        t.startTime < (item.cut ? item.cut[1] : 5)
+      );
+
+      textsForThisVideo.forEach(textItem => {
+        // Get text style
+        const style = textItem.style ? TEXT_STYLES[textItem.style] : TEXT_STYLES.basic;
+        if (!style) {
+          throw new Error(`Invalid text style: ${textItem.style}`);
+        }
+
+        // Set font size from item if specified
+        if (textItem.fontSize) {
+          style.fontSize = textItem.fontSize;
+        }
+
+        // Calculate relative start time and duration for this text within the video segment
+        const relativeStart = textItem.startTime - (item.cut ? item.cut[0] : 0);
+        const duration = textItem.duration || 5;
+        
+        // Generate text filter with position and timing
+        const textFilter = generateDrawTextFilter(
+          escapeText(textItem.text),
+          style,
+          textItem.position || {},
+          relativeStart,
+          duration
+        );
+
+        // Add text filter to the chain
+        filter += `,${textFilter}`;
+      });
+
+      // Complete the filter chain
+      filter += `[v${inputIndex}]`;
+      filterComplex.push(filter);
       videoLabels.push(`[v${inputIndex}]`);
 
       // Audio processing if volume is not 0
@@ -116,8 +168,14 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
         filterComplex.push(`[${inputIndex}:a]volume=${normalizedVolume}[a${inputIndex}]`);
         audioLabels.push(`[a${inputIndex}]`);
       }
+      inputIndex++;
     }
     else if (item.type === "image") {
+      const filePath = fileMap[item.filename];
+      if (!filePath) {
+        throw new Error(`File not found for ${item.filename}`);
+      }
+
       // Add image input
       command.input(filePath)
         .inputOptions([
@@ -127,14 +185,49 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
         ]);
       
       // Image processing with scaling
-      filterComplex.push(`[${inputIndex}:v]${scalingFilter},setsar=1,fps=30[v${inputIndex}]`);
+      let filter = `[${inputIndex}:v]${scalingFilter},setsar=1,fps=30`;
+
+      // Add text overlays that should appear during this image
+      const textsForThisImage = fullTimeline.filter(t => 
+        t.type === "text" && 
+        t.startTime >= 0 && 
+        t.startTime < (item.duration || 5)
+      );
+
+      textsForThisImage.forEach(textItem => {
+        // Get text style
+        const style = textItem.style ? TEXT_STYLES[textItem.style] : TEXT_STYLES.basic;
+        if (!style) {
+          throw new Error(`Invalid text style: ${textItem.style}`);
+        }
+
+        // Set font size from item if specified
+        if (textItem.fontSize) {
+          style.fontSize = textItem.fontSize;
+        }
+
+        // Generate text filter with position and timing
+        const textFilter = generateDrawTextFilter(
+          escapeText(textItem.text),
+          style,
+          textItem.position || 'middle-center',
+          textItem.startTime,
+          textItem.duration || 5
+        );
+
+        // Add text filter to the chain
+        filter += `,${textFilter}`;
+      });
+
+      // Complete the filter chain
+      filter += `[v${inputIndex}]`;
+      filterComplex.push(filter);
       videoLabels.push(`[v${inputIndex}]`);
+      inputIndex++;
     }
-    
-    inputIndex++;
   });
 
-  // Build the complete filter complex
+  // Build the complete filter complex for videos first
   if (videoLabels.length > 1) {
     filterComplex.push(`${videoLabels.join('')}concat=n=${videoLabels.length}:v=1:a=0[outv]`);
   } else if (videoLabels.length === 1) {
@@ -170,7 +263,7 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
       '-maxrate', '4M',
       '-bufsize', '8M',
       '-movflags', '+faststart',
-      '-fps_mode', 'cfr',
+      '-vsync', 'cfr',
       '-progress', 'pipe:1'
     ]);
 

@@ -7,6 +7,9 @@ Only **one render job is processed at a time** to keep server resource usage pre
 
 • Clean REST API with separate upload and render endpoints  
 • Advanced scaling modes (similar to CSS object-fit)  
+• Text overlay support with Google Fonts integration  
+• Multiple text styles with customizable positions and timing  
+• SRT subtitle support with automatic parsing  
 • File management with listing, filtering, and deletion  
 • Progress tracking and status updates  
 • Simple download mechanism for completed renders  
@@ -16,11 +19,13 @@ Only **one render job is processed at a time** to keep server resource usage pre
 
 * Node.js ≥ 18.0.0
 * FFmpeg 6.0 (bundled via ffmpeg-static)
+* Internet connection (for initial Google Fonts download)
 
 ## Quick start
 
 ```bash
 npm install
+npm run download-fonts  # downloads required Google Fonts
 npm run dev   # starts at http://localhost:3000 with nodemon
 ```
 
@@ -166,16 +171,103 @@ You can set a default scaling mode in the render options and override it per ite
 #### Timeline Item Options
 
 Common options for all items:
-- type: "video" or "image"
-- filename: Name of the uploaded file
-- scaling: Override default scaling mode
+- type: "video", "image", or "text"
+- scaling: Override default scaling mode (for video/image)
 
 Video-specific options:
+- filename: Name of the uploaded video file
 - cut: [startTime, endTime] in seconds
 - volume: 0-100 (default: 100)
 
 Image-specific options:
+- filename: Name of the uploaded image file
 - duration: How long to show the image in seconds (default: 5)
+
+Text-specific options:
+- text: The text content to display
+- style: Text style preset (see Text Styles section)
+- fontSize: Custom font size in pixels (optional)
+- position: Text position on screen (see Text Positions section)
+- startTime: When to show the text in seconds
+- duration: How long to show the text in seconds (default: 5)
+
+#### Text Styles
+
+The service includes several predefined text styles:
+
+| Style | Description |
+|-------|-------------|
+| basic | Simple white text (72px) |
+| outlined | White text with black border (72px) |
+| dark | Black text (72px) |
+| tiktok | TikTok-style captions with semi-transparent background (72px) |
+| subtitle | White text with black border, optimized for subtitles (48px) |
+
+All text styles use the Roboto font family from Google Fonts. You can customize the font size for any style:
+
+```json
+{
+  "type": "text",
+  "text": "Custom size text",
+  "style": "basic",
+  "fontSize": 64
+}
+```
+
+#### Text Positions
+
+Text can be positioned using predefined positions:
+
+| Position | Description |
+|----------|-------------|
+| middle-center | Center of the frame (default) |
+| top-left | Top left corner with padding |
+| top-center | Top center with padding |
+| top-right | Top right corner with padding |
+| middle-left | Middle left with padding |
+| middle-right | Middle right with padding |
+| bottom-left | Bottom left corner with padding |
+| bottom-center | Bottom center with padding |
+| bottom-right | Bottom right corner with padding |
+
+#### SRT Subtitle Support
+
+```json
+{
+  "resolution": "1080x1920",
+  "timeline": [
+    {
+      "type": "video",
+      "filename": "video.mp4",
+      "duration": 10
+    }
+  ],
+  "subtitles": "1\n00:00:01,000 --> 00:00:04,000\nFirst subtitle\n\n2\n00:00:04,000 --> 00:00:08,000\nSecond subtitle\n\n"
+}
+```
+
+You can mix regular text overlays with subtitles:
+```json
+{
+  "resolution": "1080x1920",
+  "timeline": [
+    {
+      "type": "video",
+      "filename": "video.mp4",
+      "duration": 10
+    },
+    {
+      "type": "text",
+      "text": "Title",
+      "style": "tiktok",
+      "position": "top-center",
+      "startTime": 2,
+      "duration": 4
+    }
+  ],
+  "subtitles": "1\n00:00:01,000 --> 00:00:04,000\nSubtitle appears with title\n\n"
+}
+```
 
 #### Check Render Status
 

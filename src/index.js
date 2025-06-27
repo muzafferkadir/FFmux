@@ -8,6 +8,7 @@ import fs from "fs-extra";
 import renderJob from "./render.js";
 import { spawnSync } from "child_process";
 import ffmpegStatic from "ffmpeg-static";
+import { spawn } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +31,21 @@ if (ffprobe.error) {
   process.env.FFMPEG_PATH = ffmpegStatic;
   console.log("System ffmpeg not found – using bundled static binary.");
 }
+
+// Download required fonts
+console.log("Downloading required fonts...");
+const fontDownloadScript = path.join(__dirname, "../scripts/download-fonts.js");
+const fontDownload = spawn("node", [fontDownloadScript], {
+  stdio: "inherit"
+});
+
+fontDownload.on("close", (code) => {
+  if (code !== 0) {
+    console.error("Font download failed with code:", code);
+  } else {
+    console.log("Fonts downloaded successfully!");
+  }
+});
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -261,7 +277,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
 // Render endpoint
 app.post("/render", async (req, res) => {
   try {
-    const { resolution, quality, extension, timeline } = req.body;
+    const { resolution, quality, extension, timeline, subtitles } = req.body;
 
     // Validate timeline
     if (!timeline || !Array.isArray(timeline) || timeline.length === 0) {
@@ -271,8 +287,27 @@ app.post("/render", async (req, res) => {
     // Validate and map files
     const fileMap = {};
     for (const item of timeline) {
+      // Skip file validation for text items
+      if (item.type === "text") {
+        if (!item.text) {
+          return res.status(400).json({
+            error: "Text items must have a 'text' property",
+            item: item
+          });
+        }
+        continue;
+      }
+
+      // Validate non-text items
+      if (!item.filename) {
+        return res.status(400).json({
+          error: "Non-text items must have a 'filename' property",
+          item: item
+        });
+      }
+
       const filePath = path.join(uploadDir, item.filename);
-  if (!fs.existsSync(filePath)) {
+      if (!fs.existsSync(filePath)) {
         return res.status(400).json({ 
           error: `File not found: ${item.filename}`,
           item: item
@@ -284,7 +319,7 @@ app.post("/render", async (req, res) => {
     // Create job
     const jobId = uuidv4();
     const { command, promise } = renderJob({
-      instructions: { resolution, quality, extension, timeline },
+      instructions: { resolution, quality, extension, timeline, subtitles, scaling: req.body.scaling },
       fileMap,
       outputDir: outputDir
     });
@@ -322,7 +357,7 @@ app.post("/render", async (req, res) => {
         if (job) {
           job.status = "failed";
           job.error = error.message;
-  }
+        }
       });
 
     res.json({
