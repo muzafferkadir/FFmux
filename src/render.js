@@ -1,14 +1,22 @@
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegStatic from "ffmpeg-static";
+import ffprobeStatic from "ffprobe-static";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { TEXT_STYLES, generateDrawTextFilter, escapeText, parseSRT } from "./textStyles.js";
+import { promisify } from "util";
 
-// Use bundled path when provided
+// Use bundled paths when provided
 if (process.env.FFMPEG_PATH) {
   ffmpeg.setFfmpegPath(process.env.FFMPEG_PATH);
 } else if (ffmpegStatic) {
   ffmpeg.setFfmpegPath(ffmpegStatic);
+}
+
+if (process.env.FFPROBE_PATH) {
+  ffmpeg.setFfprobePath(process.env.FFPROBE_PATH);
+} else if (ffprobeStatic) {
+  ffmpeg.setFfprobePath(ffprobeStatic.path);
 }
 
 // Scaling mode mappings (similar to CSS object-fit)
@@ -29,7 +37,24 @@ const SCALING_MODES = {
   none: 'scale=\'if(gt(iw,{width}),{width},-1)\':\'if(gt(ih,{height}),{height},-1)\',pad={width}:{height}:(({width}-iw)/2):(({height}-ih)/2)'
 };
 
-export default function renderJob({ instructions, fileMap, outputDir }) {
+// Helper function to check if file has audio stream
+const hasAudioStream = (filePath) => {
+  return new Promise((resolve) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) {
+        console.warn('Error probing file for audio:', err);
+        // If we can't probe, assume no audio to allow processing to continue
+        resolve(false);
+        return;
+      }
+      
+      const hasAudio = metadata.streams.some(stream => stream.codec_type === 'audio');
+      resolve(hasAudio);
+    });
+  });
+};
+
+export default async function renderJob({ instructions, fileMap, outputDir }) {
   const {
     resolution = "1280x720",
     quality = "23",
@@ -93,7 +118,7 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
   let hasAudio = false;
 
   // First add all inputs
-  fullTimeline.forEach((item, index) => {
+  for (const item of fullTimeline) {
     // Get item-specific scaling mode or use default
     const itemScaling = item.scaling || scaling;
     const scalingFilter = getScalingFilter(itemScaling);
@@ -126,7 +151,7 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
         t.startTime < (item.cut ? item.cut[1] : 5)
       );
 
-      textsForThisVideo.forEach(textItem => {
+      for (const textItem of textsForThisVideo) {
         // Get text style
         const style = textItem.style ? TEXT_STYLES[textItem.style] : TEXT_STYLES.basic;
         if (!style) {
@@ -153,7 +178,7 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
 
         // Add text filter to the chain
         filter += `,${textFilter}`;
-      });
+      }
 
       // Complete the filter chain
       filter += `[v${inputIndex}]`;
@@ -163,10 +188,14 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
       // Audio processing if volume is not 0
       const volume = item.volume !== undefined ? item.volume : 100;
       if (volume > 0) {
-        hasAudio = true;
-        const normalizedVolume = volume / 100;
-        filterComplex.push(`[${inputIndex}:a]volume=${normalizedVolume}[a${inputIndex}]`);
-        audioLabels.push(`[a${inputIndex}]`);
+        // Check if file has audio stream
+        const fileHasAudio = await hasAudioStream(filePath);
+        if (fileHasAudio) {
+          hasAudio = true;
+          const normalizedVolume = volume / 100;
+          filterComplex.push(`[${inputIndex}:a]volume=${normalizedVolume}[a${inputIndex}]`);
+          audioLabels.push(`[a${inputIndex}]`);
+        }
       }
       inputIndex++;
     }
@@ -194,7 +223,7 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
         t.startTime < (item.duration || 5)
       );
 
-      textsForThisImage.forEach(textItem => {
+      for (const textItem of textsForThisImage) {
         // Get text style
         const style = textItem.style ? TEXT_STYLES[textItem.style] : TEXT_STYLES.basic;
         if (!style) {
@@ -217,7 +246,7 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
 
         // Add text filter to the chain
         filter += `,${textFilter}`;
-      });
+      }
 
       // Complete the filter chain
       filter += `[v${inputIndex}]`;
@@ -225,7 +254,7 @@ export default function renderJob({ instructions, fileMap, outputDir }) {
       videoLabels.push(`[v${inputIndex}]`);
       inputIndex++;
     }
-  });
+  }
 
   // Build the complete filter complex for videos first
   if (videoLabels.length > 1) {

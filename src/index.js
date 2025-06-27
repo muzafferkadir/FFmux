@@ -318,47 +318,60 @@ app.post("/render", async (req, res) => {
 
     // Create job
     const jobId = uuidv4();
-    const { command, promise } = renderJob({
-      instructions: { resolution, quality, extension, timeline, subtitles, scaling: req.body.scaling },
-      fileMap,
-      outputDir: outputDir
-    });
+    let renderResult;
+    try {
+      renderResult = renderJob({
+        instructions: { resolution, quality, extension, timeline, subtitles, scaling: req.body.scaling },
+        fileMap,
+        outputDir: outputDir
+      });
+    } catch (error) {
+      console.error("Render initialization error:", error);
+      return res.status(500).json({ error: "Failed to initialize render job" });
+    }
+
+    const { command, promise } = renderResult;
 
     // Store job
-    jobs.set(jobId, {
+    const job = {
       command,
       promise,
       status: "processing",
       progress: 0,
       startTime: Date.now()
-    });
+    };
+    jobs.set(jobId, job);
 
     // Handle progress updates
-    command.on("status", (status) => {
-      const job = jobs.get(jobId);
-      if (job) {
-        job.progress = status.progress;
-        job.status = status.progress >= 100 ? "finished" : "processing";
-      }
-    });
-
-    // Handle completion
-    promise
-      .then((outputPath) => {
+    if (command) {
+      command.on("status", (status) => {
         const job = jobs.get(jobId);
         if (job) {
-          job.status = "finished";
-          job.outputPath = outputPath;
-        }
-      })
-      .catch((error) => {
-        console.error("Render error:", error);
-        const job = jobs.get(jobId);
-        if (job) {
-          job.status = "failed";
-          job.error = error.message;
+          job.progress = status.progress;
+          job.status = status.progress >= 100 ? "finished" : "processing";
         }
       });
+    }
+
+    // Handle completion
+    if (promise) {
+      promise
+        .then((outputPath) => {
+          const job = jobs.get(jobId);
+          if (job) {
+            job.status = "finished";
+            job.outputPath = outputPath;
+          }
+        })
+        .catch((error) => {
+          console.error("Render error:", error);
+          const job = jobs.get(jobId);
+          if (job) {
+            job.status = "failed";
+            job.error = error.message;
+          }
+        });
+    }
 
     res.json({
       jobId,
@@ -393,6 +406,18 @@ app.get("/download/:jobId", (req, res) => {
   }
 
   res.download(job.outputPath);
+});
+
+// Download output file directly by filename
+app.get("/outputs/:filename", (req, res) => {
+  const filePath = path.join(outputDir, req.params.filename);
+  
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "File not found" });
+  }
+
+  res.download(filePath);
 });
 
 app.listen(PORT, () => {

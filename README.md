@@ -1,35 +1,99 @@
-# FFmux – RESTful Video Editor via FFMPEG
+# FFmux – RESTful Video Editor via FFMPEG 🎬
 
-This project is a minimal RESTful Node.js service built with Express that turns a set of user-supplied media assets (videos, images, audio, texts) into a single rendered video using **FFmpeg**.  
-Only **one render job is processed at a time** to keep server resource usage predictable.
+A powerful REST API for video editing, text overlays, and subtitle generation using FFmpeg.
 
-## Features
-
-• Clean REST API with separate upload and render endpoints  
-• Advanced scaling modes (similar to CSS object-fit)  
-• Text overlay support with Google Fonts integration  
-• Multiple text styles with customizable positions and timing  
-• SRT subtitle support with automatic parsing  
-• File management with listing, filtering, and deletion  
-• Progress tracking and status updates  
-• Simple download mechanism for completed renders  
-• Uses [`fluent-ffmpeg`](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg) under the hood
-
-## Requirements
-
-* Node.js ≥ 18.0.0
-* FFmpeg 6.0 (bundled via ffmpeg-static)
-* Internet connection (for initial Google Fonts download)
-
-## Quick start
+## Quick Start 🚀
 
 ```bash
 npm install
 npm run download-fonts  # downloads required Google Fonts
-npm run dev   # starts at http://localhost:3000 with nodemon
+npm run dev            # starts at http://localhost:3000
 ```
 
-## API Documentation
+## Create a Video 🎥
+
+### Basic Example
+```bash
+# 1. Upload your video
+curl -X POST "http://localhost:3000/upload" \
+  -F "file=@video.mp4"
+
+# 2. Create video with text overlay
+curl -X POST "http://localhost:3000/render" \
+-H "Content-Type: application/json" \
+-d '{
+  "resolution": "1080x1920",
+  "timeline": [
+    {
+      "type": "video",
+      "filename": "video.mp4",
+      "cut": [0, 5]
+    },
+    {
+      "type": "text",
+      "text": "Hello World!",
+      "style": "tiktok",
+      "position": "top-center",
+      "startTime": 1,
+      "duration": 4
+    }
+  ]
+}'
+
+# 3. Download the result
+curl "http://localhost:3000/outputs/[output-filename].mp4" --output result.mp4
+```
+
+### More Examples 📚
+
+#### TikTok-Style Video
+```json
+{
+  "resolution": "1080x1920",
+  "scaling": "cover",
+  "timeline": [
+    {
+      "type": "video",
+      "filename": "video.mp4",
+      "cut": [0, 10],
+      "scaling": "cover"
+    },
+    {
+      "type": "text",
+      "text": "Watch this!",
+      "style": "tiktok",
+      "position": "top-center",
+      "startTime": 0,
+      "duration": 3
+    }
+  ]
+}
+```
+
+#### Video with Subtitles
+```json
+{
+  "resolution": "1080x1920",
+  "timeline": [
+    {
+      "type": "video",
+      "filename": "video.mp4",
+      "duration": 10
+    }
+  ],
+  "subtitles": "1\n00:00:01,000 --> 00:00:04,000\nFirst subtitle\n\n2\n00:00:04,000 --> 00:00:08,000\nSecond subtitle"
+}
+```
+
+## Features ✨
+
+• Text overlays with multiple styles (basic, outlined, tiktok, subtitle)  
+• SRT subtitle support  
+• CSS-like scaling modes (cover, contain, fill)  
+• Progress tracking and status updates  
+• File management API
+
+## API Documentation 📖
 
 ### 1. File Management
 
@@ -269,26 +333,44 @@ You can mix regular text overlays with subtitles:
 }
 ```
 
-#### Check Render Status
+#### Check Job Status
 
 ```bash
-curl "http://localhost:3000/status/xxx"
+curl "http://localhost:3000/status/{jobId}"
 
 # Response:
 {
-  "status": "processing",
-  "progress": 45,
-  "frames": 150,
-  "currentFps": 30,
-  "timemark": "00:00:05.00"
+  "status": "processing",  # or "finished", "failed"
+  "progress": 45,         # percent complete
+  "error": null,         # error message if failed
+  "duration": 12345      # ms since job started
 }
 ```
 
-#### Download Rendered File
+#### Download Rendered Video
 
+There are two ways to download the rendered video:
+
+1. Using job ID (requires active job in memory):
 ```bash
-curl "http://localhost:3000/download/result.mp4" --output result.mp4
+curl "http://localhost:3000/download/{jobId}" --output result.mp4
 ```
+
+2. Direct file download (works even after server restart):
+```bash
+curl "http://localhost:3000/outputs/{filename}" --output result.mp4
+```
+
+For example:
+```bash
+# Download using job ID
+curl "http://localhost:3000/download/3ff0d222-056d-4004-9978-36b71a21f422" --output result.mp4
+
+# Download directly by filename
+curl "http://localhost:3000/outputs/3ff0d222-056d-4004-9978-36b71a21f422.mp4" --output result.mp4
+```
+
+Note: The direct file download method is more reliable as it doesn't depend on the job being in memory. It's especially useful after server restarts or when the job ID is no longer available.
 
 ## Error Handling
 

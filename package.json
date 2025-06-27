@@ -20,11 +20,12 @@
   "type": "module",
   "dependencies": {
     "express": "4.19.2",
-    "multer": "1.4.5-lts.1",
+    "ffmpeg-static": "5.1.0",
+    "ffprobe-static": "^3.1.0",
     "fluent-ffmpeg": "2.1.2",
-    "uuid": "9.0.1",
     "fs-extra": "11.2.0",
-    "ffmpeg-static": "5.1.0"
+    "multer": "1.4.5-lts.1",
+    "uuid": "9.0.1"
   },
   "devDependencies": {
     "nodemon": "3.0.2"
@@ -32,4 +33,4 @@
   "engines": {
     "node": ">=18.0.0"
   }
-} 
+}
