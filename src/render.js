@@ -4,9 +4,7 @@ import ffprobeStatic from "ffprobe-static";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { TEXT_STYLES, generateDrawTextFilter, escapeText, parseSRT } from "./textStyles.js";
-import { promisify } from "util";
 
-// Use bundled paths when provided
 if (process.env.FFMPEG_PATH) {
   ffmpeg.setFfmpegPath(process.env.FFMPEG_PATH);
 } else if (ffmpegStatic) {
@@ -93,19 +91,44 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
   const command = ffmpeg({ stdoutLines: 0 });
 
   // Calculate total duration for progress tracking
-  const totalDuration = fullTimeline.reduce((acc, item) => {
+  let totalDuration = 0;
+  for (const item of fullTimeline) {
     if (item.type === "video") {
-      const duration = item.cut ? item.cut[1] - item.cut[0] : 0;
-      return acc + duration;
+      const filePath = fileMap[item.filename];
+      if (!filePath) {
+        throw new Error(`File not found for ${item.filename}`);
+      }
+
+      // Get video duration
+      const duration = await new Promise((resolve) => {
+        ffmpeg.ffprobe(filePath, (err, metadata) => {
+          if (err) {
+            console.warn('Error probing file for duration:', err);
+            resolve(5); // default duration
+            return;
+          }
+          
+          resolve(metadata.format.duration || 5);
+        });
+      });
+
+      const startTime = item.cut ? item.cut[0] : 0;
+      const endTime = item.cut ? item.cut[1] : duration;
+      const segmentDuration = endTime - startTime;
+
+      console.log(`Video ${item.filename} duration info:`, {
+        originalDuration: duration,
+        startTime,
+        endTime,
+        segmentDuration
+      });
+
+      totalDuration += segmentDuration;
     }
-    if (item.type === "image") {
-      return acc + (item.duration || 5);
+    else if (item.type === "image") {
+      totalDuration += (item.duration || 5);
     }
-    if (item.type === "text") {
-      return acc + (item.duration || 5);
-    }
-    return acc;
-  }, 0);
+  }
 
   console.log('Starting FFmpeg render with totalDuration:', totalDuration);
   console.log('Timeline:', JSON.stringify(fullTimeline, null, 2));
@@ -132,23 +155,52 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
       console.log(`Processing ${item.filename} with scaling mode: ${itemScaling}`);
       console.log(`Scaling filter: ${scalingFilter}`);
 
-      // Add video input
+      // Get video duration using ffprobe
+      const duration = await new Promise((resolve) => {
+        ffmpeg.ffprobe(filePath, (err, metadata) => {
+          if (err) {
+            console.warn('Error probing file for duration:', err);
+            resolve(5); // default duration
+            return;
+          }
+          
+          resolve(metadata.format.duration || 5);
+        });
+      });
+
+      // Calculate cut points
+      const startTime = item.cut ? item.cut[0] : 0;
+      const endTime = item.cut ? item.cut[1] : duration;
+      const segmentDuration = endTime - startTime;
+
+      if (segmentDuration <= 0) {
+        throw new Error(`Invalid cut points for ${item.filename}: duration must be positive`);
+      }
+
+      console.log(`Adding video segment:`, {
+        filename: item.filename,
+        startTime,
+        endTime,
+        segmentDuration,
+        scaling: itemScaling
+      });
+
+      // Add video input with proper duration
       command.input(filePath)
         .inputOptions([
           '-accurate_seek',
-          '-ss', String(item.cut ? item.cut[0] : 0),
-          '-t', String(item.cut ? item.cut[1] - item.cut[0] : 5),
-          '-r', '30'
+          '-ss', String(startTime),
+          '-t', String(segmentDuration)
         ]);
       
       // Video processing with scaling
-      let filter = `[${inputIndex}:v]${scalingFilter},setsar=1,fps=30`;
+      let filter = `[${inputIndex}:v]${scalingFilter},setsar=1`;
 
       // Add text overlays that should appear during this video
       const textsForThisVideo = fullTimeline.filter(t => 
         t.type === "text" && 
-        t.startTime >= (item.cut ? item.cut[0] : 0) && 
-        t.startTime < (item.cut ? item.cut[1] : 5)
+        t.startTime >= startTime && 
+        t.startTime < endTime
       );
 
       for (const textItem of textsForThisVideo) {
@@ -164,8 +216,8 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
         }
 
         // Calculate relative start time and duration for this text within the video segment
-        const relativeStart = textItem.startTime - (item.cut ? item.cut[0] : 0);
-        const duration = textItem.duration || 5;
+        const relativeStart = textItem.startTime - startTime;
+        const duration = Math.min(textItem.duration || 5, segmentDuration - relativeStart);
         
         // Generate text filter with position and timing
         const textFilter = generateDrawTextFilter(
@@ -214,7 +266,7 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
         ]);
       
       // Image processing with scaling
-      let filter = `[${inputIndex}:v]${scalingFilter},setsar=1,fps=30`;
+      let filter = `[${inputIndex}:v]${scalingFilter},setsar=1`;
 
       // Add text overlays that should appear during this image
       const textsForThisImage = fullTimeline.filter(t => 
@@ -258,7 +310,19 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
 
   // Build the complete filter complex for videos first
   if (videoLabels.length > 1) {
-    filterComplex.push(`${videoLabels.join('')}concat=n=${videoLabels.length}:v=1:a=0[outv]`);
+    // Add concat filter with explicit duration for each segment
+    const concatFilter = videoLabels.map((label, i) => {
+      const item = fullTimeline[i];
+      if (item.type === "video") {
+        const duration = item.cut ? 
+          item.cut[1] - item.cut[0] : 
+          item.duration || 5;
+        return `${label}:d=${duration}`;
+      }
+      return label;
+    }).join('');
+    
+    filterComplex.push(`${concatFilter}concat=n=${videoLabels.length}:v=1:a=0[outv]`);
   } else if (videoLabels.length === 1) {
     filterComplex.push(`${videoLabels[0]}copy[outv]`);
   }
@@ -266,7 +330,19 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
   // Add audio concat if we have any audio
   if (hasAudio && audioLabels.length > 0) {
     if (audioLabels.length > 1) {
-      filterComplex.push(`${audioLabels.join('')}concat=n=${audioLabels.length}:v=0:a=1[outa]`);
+      // Add concat filter with explicit duration for each segment
+      const concatFilter = audioLabels.map((label, i) => {
+        const item = fullTimeline[i];
+        if (item.type === "video") {
+          const duration = item.cut ? 
+            item.cut[1] - item.cut[0] : 
+            item.duration || 5;
+          return `${label}:d=${duration}`;
+        }
+        return label;
+      }).join('');
+      
+      filterComplex.push(`${concatFilter}concat=n=${audioLabels.length}:v=0:a=1[outa]`);
     } else {
       filterComplex.push(`${audioLabels[0]}aresample=async=1[outa]`);
     }
@@ -339,7 +415,8 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
             percent,
             frames: progress.frames,
             currentFps: progress.currentFps,
-            timemark: progress.timemark
+            timemark: progress.timemark,
+            totalDuration
           });
           
           command.emit('status', {
