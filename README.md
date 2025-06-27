@@ -1,4 +1,4 @@
-# FFmux – Simple FFmpeg Rendering Service
+# FFmux – RESTful Video Editor via FFMPEG
 
 This project is a minimal RESTful Node.js service built with Express that turns a set of user-supplied media assets (videos, images, audio, texts) into a single rendered video using **FFmpeg**.  
 Only **one render job is processed at a time** to keep server resource usage predictable.
