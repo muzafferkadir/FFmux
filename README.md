@@ -110,11 +110,17 @@ curl "http://localhost:3000/outputs/[output-filename].mp4" --output result.mp4
 
 ## Features ✨
 
-• Text overlays with multiple styles (basic, outlined, tiktok, subtitle)  
-• SRT subtitle support  
-• CSS-like scaling modes (cover, contain, fill)  
-• Progress tracking and status updates  
-• File management API
+• **Video Processing**: Trim, scale, and combine multiple video files  
+• **Audio Support**: Background music, audio overlays with volume control  
+• **Image Integration**: Static images with custom durations  
+• **Text Overlays**: 5 predefined styles with custom positioning and timing  
+• **SRT Subtitle Support**: Import and render subtitle files  
+• **CSS-like Scaling**: 5 scaling modes (cover, contain, fill, scale-down, none)  
+• **Timeline-based Editing**: Precise control over timing and sequencing  
+• **Progress Tracking**: Real-time render progress and status updates  
+• **File Management API**: Upload, list, and delete media files  
+• **Custom Fonts**: Google Fonts integration (Roboto family)  
+• **Multiple Output Formats**: MP4, MOV, AVI and more
 
 ## API Documentation 📖
 
@@ -234,12 +240,46 @@ curl -X POST "http://localhost:3000/render" \
 
 #### Render Options
 
-| Option | Description | Default | Values |
-|--------|-------------|---------|---------|
-| resolution | Output video resolution | "1280x720" | "widthxheight" |
-| quality | FFmpeg CRF value (lower is better) | "23" | "0" to "51" |
-| extension | Output file format | "mp4" | "mp4", "mov", etc. |
-| scaling | Default scaling mode | "cover" | See scaling modes |
+| Option | Type | Description | Default | Values |
+|--------|------|-------------|---------|---------|
+| `resolution` | String | Output video resolution | "1280x720" | "widthxheight" (e.g., "1920x1080") |
+| `quality` | String | FFmpeg CRF value (lower = better quality) | "23" | "0" to "51" |
+| `extension` | String | Output file format | "mp4" | "mp4", "mov", "avi", etc. |
+| `scaling` | String | Default scaling mode for all items | "cover" | See scaling modes below |
+| `timeline` | Array | Required. Array of timeline items | `[]` | Array of video/image/audio/text items |
+| `subtitles` | String | Optional. SRT subtitle content | `null` | Valid SRT format string |
+
+Example render request:
+```json
+{
+  "resolution": "1920x1080",
+  "quality": "20",
+  "extension": "mp4",
+  "scaling": "cover",
+  "timeline": [
+    {
+      "type": "video",
+      "filename": "intro.mp4",
+      "cut": [0, 10],
+      "volume": 100
+    },
+    {
+      "type": "audio",
+      "filename": "music.mp3",
+      "startTime": 0,
+      "volume": 60
+    },
+    {
+      "type": "text",
+      "text": "Welcome!",
+      "style": "tiktok",
+      "startTime": 2,
+      "duration": 3
+    }
+  ],
+  "subtitles": "1\n00:00:05,000 --> 00:00:08,000\nHello World!\n\n2\n00:00:10,000 --> 00:00:13,000\nThis is a subtitle"
+}
+```
 
 #### Scaling Modes
 
@@ -257,26 +297,80 @@ You can set a default scaling mode in the render options and override it per ite
 
 #### Timeline Item Options
 
-Common options for all items:
-- type: "video", "image", or "text"
-- scaling: Override default scaling mode (for video/image)
+All timeline items share these common properties:
+- `type`: Required. Item type: "video", "image", "audio", or "text"
+- `scaling`: Optional. Override default scaling mode (for video/image only)
 
-Video-specific options:
-- filename: Name of the uploaded video file
-- cut: [startTime, endTime] in seconds
-- volume: 0-100 (default: 100)
+**Video Items (`type: "video"`)**
+- `filename`: Required. Name of the uploaded video file
+- `cut`: Optional. Array of [startTime, endTime] in seconds to trim the video
+- `volume`: Optional. Audio volume 0-100 (default: 100, set to 0 to mute)
+- `scaling`: Optional. Override default scaling mode
 
-Image-specific options:
-- filename: Name of the uploaded image file
-- duration: How long to show the image in seconds (default: 5)
+Example:
+```json
+{
+  "type": "video",
+  "filename": "video.mp4",
+  "cut": [10, 30],
+  "volume": 80,
+  "scaling": "contain"
+}
+```
 
-Text-specific options:
-- text: The text content to display
-- style: Text style preset (see Text Styles section)
-- fontSize: Custom font size in pixels (optional)
-- position: Text position on screen (see Text Positions section)
-- startTime: When to show the text in seconds
-- duration: How long to show the text in seconds (default: 5)
+**Image Items (`type: "image"`)**
+- `filename`: Required. Name of the uploaded image file
+- `duration`: Optional. How long to show the image in seconds (default: 5)
+- `scaling`: Optional. Override default scaling mode
+
+Example:
+```json
+{
+  "type": "image",
+  "filename": "slide.png",
+  "duration": 3,
+  "scaling": "cover"
+}
+```
+
+**Audio Items (`type: "audio"`)**
+- `filename`: Required. Name of the uploaded audio file
+- `startTime`: Optional. When to start playing the audio in the timeline (default: 0)
+- `cut`: Optional. Array of [startTime, endTime] in seconds to trim the audio
+- `duration`: Optional. Override audio duration (will cut or loop to fit)
+- `volume`: Optional. Audio volume 0-100 (default: 100)
+
+Example:
+```json
+{
+  "type": "audio",
+  "filename": "background.mp3",
+  "startTime": 5,
+  "cut": [10, 60],
+  "volume": 80
+}
+```
+
+**Text Items (`type: "text"`)**
+- `text`: Required. The text content to display
+- `style`: Optional. Text style preset: "basic", "outlined", "dark", "tiktok", "subtitle" (default: "basic")
+- `fontSize`: Optional. Custom font size in pixels (overrides style default)
+- `position`: Optional. Text position on screen (default: "middle-center")
+- `startTime`: Required. When to show the text in seconds
+- `duration`: Optional. How long to show the text in seconds (default: 5)
+
+Example:
+```json
+{
+  "type": "text",
+  "text": "Hello World!",
+  "style": "tiktok",
+  "fontSize": 64,
+  "position": "top-center",
+  "startTime": 2,
+  "duration": 4
+}
+```
 
 #### Text Styles
 
@@ -303,19 +397,62 @@ All text styles use the Roboto font family from Google Fonts. You can customize 
 
 #### Text Positions
 
-Text can be positioned using predefined positions:
+Text can be positioned using predefined positions or custom coordinates:
 
-| Position | Description |
-|----------|-------------|
-| middle-center | Center of the frame (default) |
-| top-left | Top left corner with padding |
-| top-center | Top center with padding |
-| top-right | Top right corner with padding |
-| middle-left | Middle left with padding |
-| middle-right | Middle right with padding |
-| bottom-left | Bottom left corner with padding |
-| bottom-center | Bottom center with padding |
-| bottom-right | Bottom right corner with padding |
+**Predefined Positions:**
+
+| Position | Description | Coordinates |
+|----------|-------------|-------------|
+| `top-left` | Top left corner with padding | x: 50, y: 50 |
+| `top-center` | Top center with padding | x: center, y: 50 |
+| `top-right` | Top right corner with padding | x: right-50, y: 50 |
+| `middle-left` | Middle left with padding | x: 50, y: center |
+| `middle-center` | Center of the frame (default) | x: center, y: center |
+| `middle-right` | Middle right with padding | x: right-50, y: center |
+| `bottom-left` | Bottom left corner with padding | x: 50, y: bottom-50 |
+| `bottom-center` | Bottom center with padding | x: center, y: bottom-50 |
+| `bottom-right` | Bottom right corner with padding | x: right-50, y: bottom-50 |
+
+**Custom Positioning:**
+
+You can also specify custom coordinates using an object:
+
+```json
+{
+  "type": "text",
+  "text": "Custom positioned text",
+  "position": {
+    "x": "100",
+    "y": "200"
+  },
+  "startTime": 0,
+  "duration": 5
+}
+```
+
+**Position Examples:**
+```json
+// Using predefined position
+{
+  "position": "top-center"
+}
+
+// Using custom coordinates (pixels from top-left)
+{
+  "position": {
+    "x": "50",
+    "y": "100"
+  }
+}
+
+// Using FFmpeg expressions for dynamic positioning
+{
+  "position": {
+    "x": "(w-text_w)/2",
+    "y": "h*0.8"
+  }
+}
+```
 
 #### SRT Subtitle Support
 
