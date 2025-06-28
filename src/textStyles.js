@@ -114,8 +114,9 @@ export function srtTimeToSeconds(timeString) {
 
 // Helper function to parse SRT file
 export function parseSRT(content) {
+  const normalized = content.replace(/\\n/g, '\n');
   const subtitles = [];
-  const blocks = content.trim().split('\n\n');
+  const blocks = normalized.trim().split('\n\n');
 
   console.log('Parsing SRT blocks:', blocks);
 
@@ -202,7 +203,9 @@ export function generateDrawTextFilter(text, style, position = {}, startTime = 0
 // Helper function to escape special characters in text for FFmpeg
 export function escapeText(text) {
   return text
+    .replace(/\\/g, "\\\\")  // Escape backslashes first
     .replace(/'/g, "'\\''")  // Escape single quotes
     .replace(/:/g, '\\:')    // Escape colons
-    .replace(/%/g, '\\%');   // Escape percent signs
+    .replace(/%/g, '\\%')    // Escape percent signs
+    .replace(/\n/g, '\\n');   // Escape newlines
 } 

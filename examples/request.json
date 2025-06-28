@@ -1,0 +1,199 @@
+{
+  "resolution": "1080x1920",
+  "quality": "23",
+  "extension": "mp4",
+
+  "timeline": [
+    {
+      "type": "video",
+      "filename": "1.mp4",
+      "cut": [0, 4],
+      "scaling": "cover",
+      "volume": 0
+    },
+    {
+      "type": "text",
+      "text": "Basic Style",
+      "style": "basic",
+      "position": "top-center",
+      "startTime": 0,
+      "duration": 4
+    },
+    {
+      "type": "text",
+      "text": "Hayat bazen seni,",
+      "style": "basic",
+      "position": "middle-center",
+      "startTime": 0,
+      "duration": 1.5,
+      "fontSize": 84
+    },
+    {
+      "type": "text",
+      "text": "sanki hiçbir şey yoluna girmeyecekmiş gibi sınar.",
+      "style": "basic",
+      "position": "middle-center",
+      "startTime": 1.5,
+      "duration": 3.5,
+      "fontSize": 48
+    },
+    {
+      "type": "video",
+      "filename": "1.mp4",
+      "scaling": "contain",
+      "volume": 0
+    },
+    {
+      "type": "text",
+      "text": "Outlined Style",
+      "style": "outlined",
+      "position": "top-center",
+      "startTime": 4,
+      "duration": 4
+    },
+    {
+      "type": "text",
+      "text": "Ama unutma:",
+      "style": "outlined",
+      "position": "middle-center",
+      "startTime": 5,
+      "duration": 1.5,
+      "fontSize": 96
+    },
+    {
+      "type": "text",
+      "text": "Büyük değişimler,",
+      "style": "outlined",
+      "position": "middle-center",
+      "startTime": 6.5,
+      "duration": 1,
+      "fontSize": 48
+    },
+    {
+      "type": "video",
+      "filename": "1.mp4",
+      "scaling": "fill",
+      "volume": 0
+    },
+    {
+      "type": "text",
+      "text": "Dark Style",
+      "style": "dark",
+      "position": "top-center",
+      "startTime": 8,
+      "duration": 4
+    },
+    {
+      "type": "text",
+      "text": "genellikle sessizce başlar.",
+      "style": "dark",
+      "position": "middle-center",
+      "startTime": 7.5,
+      "duration": 1.5,
+      "fontSize": 60
+    },
+    {
+      "type": "text",
+      "text": "Gökyüzü ne kadar kapalı olursa olsun,",
+      "style": "dark",
+      "position": "middle-center",
+      "startTime": 9.0,
+      "duration": 3,
+      "fontSize": 60
+    },
+    {
+      "type": "video",
+      "filename": "1.mp4",
+      "scaling": "scale-down",
+      "volume": 0
+    },
+    {
+      "type": "text",
+      "text": "TikTok Style",
+      "style": "tiktok",
+      "position": "top-center",
+      "startTime": 12,
+      "duration": 4
+    },
+    {
+      "type": "text",
+      "text": "güneş bulutların ardında hâlâ parlar.",
+      "style": "tiktok",
+      "position": "middle-center",
+      "startTime": 12,
+      "duration": 2,
+      "fontSize": 40
+    },
+    {
+      "type": "text",
+      "text": "Yeter ki kalbini açık tut,",
+      "style": "tiktok",
+      "position": "middle-center",
+      "startTime": 15,
+      "duration": 1,
+      "fontSize": 84
+    },
+    {
+      "type": "video",
+      "filename": "1.mp4",
+      "scaling": "cover",
+      "volume": 0
+    },
+    {
+      "type": "text",
+      "text": "Subtitle Style",
+      "style": "subtitle",
+      "position": "top-center",
+      "startTime": 16,
+      "duration": 4
+    },
+    {
+      "type": "text",
+      "text": "sabırlı ol,",
+      "style": "subtitle",
+      "position": "middle-center",
+      "startTime": 16.5,
+      "duration": 1,
+      "fontSize": 96
+    },
+    {
+      "type": "text",
+      "text": "yoluna devam et.",
+      "style": "subtitle",
+      "position": "middle-center",
+      "startTime": 18,
+      "duration": 1,
+      "fontSize": 84
+    },
+    {
+      "type": "audio",
+      "filename": "1.mp3",
+      "startTime": 0,
+      "volume": 80
+    },
+    {
+      "type": "image",
+      "filename": "1.png",
+      "duration": 5,
+      "scaling": "cover"
+    },
+    {
+      "type": "text",
+      "text": "FFmux",
+      "style": "tiktok",
+      "position": "middle-center",
+      "startTime": 20,
+      "duration": 2.5,
+      "fontSize": 120
+    },
+    {
+      "type": "text",
+      "text": "ile yapıldı",
+      "style": "tiktok",
+      "position": "middle-center",
+      "startTime": 22.5,
+      "duration": 2.5,
+      "fontSize": 96
+    }
+  ]
+} 

@@ -90,8 +90,9 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
   const outputPath = path.join(outputDir, `${uuidv4()}.${extension}`);
   const command = ffmpeg({ stdoutLines: 0 });
 
-  // Calculate total duration for progress tracking
+  // Calculate total duration for progress tracking and store absolute timeline start per item
   let totalDuration = 0;
+  let timelineCursor = 0; // absolute time in seconds
   for (const item of fullTimeline) {
     if (item.type === "video") {
       const filePath = fileMap[item.filename];
@@ -123,10 +124,51 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
         segmentDuration
       });
 
+      // After segmentDuration computed, before adding to totalDuration, set timelineStart
+      item.timelineStart = timelineCursor;
       totalDuration += segmentDuration;
+      timelineCursor += segmentDuration;
     }
     else if (item.type === "image") {
-      totalDuration += (item.duration || 5);
+      const segmentDuration = item.duration || 5;
+      item.timelineStart = timelineCursor;
+      totalDuration += segmentDuration;
+      timelineCursor += segmentDuration;
+    }
+    else if (item.type === "audio") {
+      const filePath = fileMap[item.filename];
+      if (!filePath) {
+        throw new Error(`File not found for ${item.filename}`);
+      }
+
+      // Determine start/end and segment duration – only to accumulate totalDuration here
+      const audioMetaDuration = await new Promise((resolve) => {
+        ffmpeg.ffprobe(filePath, (err, metadata) => {
+          if (err) {
+            console.warn("Error probing file for duration:", err);
+            resolve(5); // default duration if probing fails
+            return;
+          }
+          resolve(metadata.format.duration || 5);
+        });
+      });
+
+      const startTime = item.cut ? item.cut[0] : 0;
+      const endTime = item.cut ? item.cut[1] : audioMetaDuration;
+      const segmentDuration = item.duration ? item.duration : endTime - startTime;
+
+      if (segmentDuration <= 0) {
+        throw new Error(`Invalid cut points for ${item.filename}: duration must be positive`);
+      }
+
+      // Overlay audio does NOT shift the sequential cursor. If startTime explicit use it, otherwise align with current cursor.
+      const overlayStart = item.startTime !== undefined ? item.startTime : timelineCursor;
+      item.timelineStart = overlayStart;
+
+      // Determine when this audio ends
+      const overlayEnd = overlayStart + segmentDuration;
+      // Update totalDuration to cover this overlay if it ends after current total
+      totalDuration = Math.max(totalDuration, overlayEnd);
     }
   }
 
@@ -136,7 +178,8 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
   // Add inputs and prepare filter complex
   const filterComplex = [];
   const videoLabels = [];
-  const audioLabels = [];
+  const audioLabels = []; // sequential audio from video/image segments
+  const overlayAudioLabels = []; // background/overlay audio tracks
   let inputIndex = 0;
   let hasAudio = false;
 
@@ -194,46 +237,7 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
         ]);
       
       // Video processing with scaling
-      let filter = `[${inputIndex}:v]${scalingFilter},setsar=1`;
-
-      // Add text overlays that should appear during this video
-      const textsForThisVideo = fullTimeline.filter(t => 
-        t.type === "text" && 
-        t.startTime >= startTime && 
-        t.startTime < endTime
-      );
-
-      for (const textItem of textsForThisVideo) {
-        // Get text style
-        const style = textItem.style ? TEXT_STYLES[textItem.style] : TEXT_STYLES.basic;
-        if (!style) {
-          throw new Error(`Invalid text style: ${textItem.style}`);
-        }
-
-        // Set font size from item if specified
-        if (textItem.fontSize) {
-          style.fontSize = textItem.fontSize;
-        }
-
-        // Calculate relative start time and duration for this text within the video segment
-        const relativeStart = textItem.startTime - startTime;
-        const duration = Math.min(textItem.duration || 5, segmentDuration - relativeStart);
-        
-        // Generate text filter with position and timing
-        const textFilter = generateDrawTextFilter(
-          escapeText(textItem.text),
-          style,
-          textItem.position || {},
-          relativeStart,
-          duration
-        );
-
-        // Add text filter to the chain
-        filter += `,${textFilter}`;
-      }
-
-      // Complete the filter chain
-      filter += `[v${inputIndex}]`;
+      let filter = `[${inputIndex}:v]${scalingFilter},setsar=1[v${inputIndex}]`;
       filterComplex.push(filter);
       videoLabels.push(`[v${inputIndex}]`);
 
@@ -245,8 +249,9 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
         if (fileHasAudio) {
           hasAudio = true;
           const normalizedVolume = volume / 100;
-          filterComplex.push(`[${inputIndex}:a]volume=${normalizedVolume}[a${inputIndex}]`);
-          audioLabels.push(`[a${inputIndex}]`);
+          const label = `[a${inputIndex}]`;
+          filterComplex.push(`[${inputIndex}:a]volume=${normalizedVolume}${label}`);
+          audioLabels.push(label);
         }
       }
       inputIndex++;
@@ -266,85 +271,139 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
         ]);
       
       // Image processing with scaling
-      let filter = `[${inputIndex}:v]${scalingFilter},setsar=1`;
-
-      // Add text overlays that should appear during this image
-      const textsForThisImage = fullTimeline.filter(t => 
-        t.type === "text" && 
-        t.startTime >= 0 && 
-        t.startTime < (item.duration || 5)
-      );
-
-      for (const textItem of textsForThisImage) {
-        // Get text style
-        const style = textItem.style ? TEXT_STYLES[textItem.style] : TEXT_STYLES.basic;
-        if (!style) {
-          throw new Error(`Invalid text style: ${textItem.style}`);
-        }
-
-        // Set font size from item if specified
-        if (textItem.fontSize) {
-          style.fontSize = textItem.fontSize;
-        }
-
-        // Generate text filter with position and timing
-        const textFilter = generateDrawTextFilter(
-          escapeText(textItem.text),
-          style,
-          textItem.position || 'middle-center',
-          textItem.startTime,
-          textItem.duration || 5
-        );
-
-        // Add text filter to the chain
-        filter += `,${textFilter}`;
-      }
-
-      // Complete the filter chain
-      filter += `[v${inputIndex}]`;
+      let filter = `[${inputIndex}:v]${scalingFilter},setsar=1[v${inputIndex}]`;
       filterComplex.push(filter);
       videoLabels.push(`[v${inputIndex}]`);
+      inputIndex++;
+    }
+    else if (item.type === "audio") {
+      const filePath = fileMap[item.filename];
+      if (!filePath) {
+        throw new Error(`File not found for ${item.filename}`);
+      }
+
+      console.log(`Adding audio segment:`, { filename: item.filename });
+
+      // Determine segment duration (same logic as in the first pass)
+      const audioMetaDuration = await new Promise((resolve) => {
+        ffmpeg.ffprobe(filePath, (err, metadata) => {
+          if (err) {
+            console.warn('Error probing file for duration:', err);
+            resolve(5);
+            return;
+          }
+          resolve(metadata.format.duration || 5);
+        });
+      });
+
+      const startTime = item.cut ? item.cut[0] : 0;
+      const endTime = item.cut ? item.cut[1] : audioMetaDuration;
+      const segmentDuration = item.duration ? item.duration : endTime - startTime;
+
+      // Overlay audio does NOT shift the sequential cursor. If startTime explicit use it, otherwise align with current cursor.
+      const overlayStart = item.startTime !== undefined ? item.startTime : timelineCursor;
+      item.timelineStart = overlayStart;
+
+      // Determine when this audio ends
+      const overlayEnd = overlayStart + segmentDuration;
+      // Update totalDuration to cover this overlay if it ends after current total
+      totalDuration = Math.max(totalDuration, overlayEnd);
+
+      // Add audio input
+      command.input(filePath)
+        .inputOptions([
+          '-accurate_seek',
+          '-ss', String(startTime),
+          '-t', String(segmentDuration)
+        ]);
+
+      // Calculate absolute start delay in ms
+      const delayMs = (item.startTime || 0) * 1000;
+
+      // Handle volume and adelay
+      const volume = item.volume !== undefined ? item.volume : 100;
+      const normalizedVolume = volume / 100;
+
+      const delayedLabel = `[oa${overlayAudioLabels.length}]`;
+      const volumeFilter = volume !== 100 ? `,volume=${normalizedVolume}` : '';
+      const delayFilter = delayMs > 0 ? `adelay=${delayMs}|${delayMs}` : 'anull';
+      filterComplex.push(`[${inputIndex}:a]${delayFilter}${volumeFilter}${delayedLabel}`);
+
+      hasAudio = true;
+      overlayAudioLabels.push(delayedLabel);
+
       inputIndex++;
     }
   }
 
   // Build the complete filter complex for videos first
+  let finalVideoLabel = '';
   if (videoLabels.length > 1) {
-    // Add concat filter with explicit duration for each segment
-    const concatFilter = videoLabels.map((label, i) => {
-      const item = fullTimeline[i];
-      if (item.type === "video") {
-        const duration = item.cut ? 
-          item.cut[1] - item.cut[0] : 
-          item.duration || 5;
-        return `${label}:d=${duration}`;
-      }
-      return label;
-    }).join('');
-    
-    filterComplex.push(`${concatFilter}concat=n=${videoLabels.length}:v=1:a=0[outv]`);
+    // Simple concat for all video segments
+    filterComplex.push(`${videoLabels.join('')}concat=n=${videoLabels.length}:v=1:a=0[concatv]`);
+    finalVideoLabel = '[concatv]';
   } else if (videoLabels.length === 1) {
-    filterComplex.push(`${videoLabels[0]}copy[outv]`);
+    filterComplex.push(`${videoLabels[0]}copy[concatv]`);
+    finalVideoLabel = '[concatv]';
   }
 
-  // Add audio concat if we have any audio
-  if (hasAudio && audioLabels.length > 0) {
-    if (audioLabels.length > 1) {
-      // Add concat filter with explicit duration for each segment
-      const concatFilter = audioLabels.map((label, i) => {
-        const item = fullTimeline[i];
-        if (item.type === "video") {
-          const duration = item.cut ? 
-            item.cut[1] - item.cut[0] : 
-            item.duration || 5;
-          return `${label}:d=${duration}`;
-        }
-        return label;
-      }).join('');
-      
-      filterComplex.push(`${concatFilter}concat=n=${audioLabels.length}:v=0:a=1[outa]`);
+  // Apply text overlays after video concatenation
+  let textFilter = finalVideoLabel;
+  const textItems = fullTimeline.filter(item => item.type === "text");
+  
+  if (textItems.length > 0) {
+    for (const textItem of textItems) {
+      // Get text style
+      const style = textItem.style ? TEXT_STYLES[textItem.style] : TEXT_STYLES.basic;
+      if (!style) {
+        throw new Error(`Invalid text style: ${textItem.style}`);
+      }
+
+      // Set font size from item if specified
+      if (textItem.fontSize) {
+        style.fontSize = textItem.fontSize;
+      }
+
+      // Generate text filter with absolute timing
+      const textFilter = generateDrawTextFilter(
+        escapeText(textItem.text),
+        style,
+        textItem.position || 'middle-center',
+        textItem.startTime || 0,
+        textItem.duration || 5
+      );
+
+      // Add text filter to the chain
+      filterComplex.push(`${finalVideoLabel}${textFilter}[txt${textItems.indexOf(textItem)}]`);
+      finalVideoLabel = `[txt${textItems.indexOf(textItem)}]`;
+    }
+  }
+
+  // Set final video output label
+  filterComplex.push(`${finalVideoLabel}copy[outv]`);
+
+  // Final audio processing
+  if (hasAudio) {
+    let mainAudioLabel = null;
+
+    // 1) Sequential audio from video/image segments – concat if needed
+    if (audioLabels.length === 1) {
+      mainAudioLabel = audioLabels[0];
+    } else if (audioLabels.length > 1) {
+      mainAudioLabel = '[videocona]';
+      filterComplex.push(`${audioLabels.join('')}concat=n=${audioLabels.length}:v=0:a=1${mainAudioLabel}`);
+    }
+
+    // 2) Collect all streams for mixing
+    const mixInputs = [];
+    if (mainAudioLabel) mixInputs.push(mainAudioLabel);
+    mixInputs.push(...overlayAudioLabels);
+
+    if (mixInputs.length === 1) {
+      filterComplex.push(`${mixInputs[0]}aresample=async=1[outa]`);
     } else {
-      filterComplex.push(`${audioLabels[0]}aresample=async=1[outa]`);
+      const mixChain = mixInputs.join('');
+      filterComplex.push(`${mixChain}amix=inputs=${mixInputs.length}:duration=longest:dropout_transition=2[outa]`);
     }
   }
 
@@ -373,7 +432,7 @@ export default async function renderJob({ instructions, fileMap, outputDir }) {
     ]);
 
   // Add audio output options if we have audio
-  if (hasAudio && audioLabels.length > 0) {
+  if (hasAudio) {
     command.outputOptions([
       '-map', '[outa]',
       '-acodec', 'aac',
