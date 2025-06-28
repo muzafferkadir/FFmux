@@ -25,71 +25,8 @@ A powerful REST API for video editing, text overlays, and subtitle generation us
       </td>
     </tr>
   </table>
-
-  <h3>Used Components</h3>
-  <table>
-    <tr>
-      <th>File</th>
-      <th>Type</th>
-      <th>Effect</th>
-    </tr>
-    <tr>
-      <td><code>1.mp4</code></td>
-      <td>Video</td>
-      <td>Base video with different scaling modes (cover, contain, fill)</td>
-    </tr>
-    <tr>
-      <td><code>1.mp3</code></td>
-      <td>Audio</td>
-      <td>Background music at 80% volume</td>
-    </tr>
-    <tr>
-      <td><code>1.png</code></td>
-      <td>Image</td>
-      <td>Logo shown at the end</td>
-    </tr>
-  </table>
-
-  <h3>Text Effects</h3>
-  <table>
-    <tr>
-      <td>
-        <strong>Basic Style</strong><br>
-        "Hayat bazen seni..."<br>
-        <em>White text, 48-84px</em>
-      </td>
-      <td>
-        <strong>Outlined Style</strong><br>
-        "Ama unutma..."<br>
-        <em>White with black outline, 48-96px</em>
-      </td>
-      <td>
-        <strong>Dark Style</strong><br>
-        "Gökyüzü ne kadar..."<br>
-        <em>Black text, 60px</em>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <strong>TikTok Style</strong><br>
-        "güneş bulutların..."<br>
-        <em>Semi-transparent bg, 40-84px</em>
-      </td>
-      <td>
-        <strong>Subtitle Style</strong><br>
-        "sabırlı ol..."<br>
-        <em>White with outline, 84-96px</em>
-      </td>
-      <td>
-        <strong>Final Text</strong><br>
-        "FFmux ile yapıldı"<br>
-        <em>TikTok style, 96-120px</em>
-      </td>
-    </tr>
-  </table>
-</div>
-
-> 💡 You can find all these example files in the `examples` directory.
+  
+##### *💡 You can find all these example files in the `examples` directory.*
 
 ## Quick Start 🚀
 
