@@ -8,24 +8,22 @@ A powerful REST API for video editing, text overlays, and subtitle generation us
   <tr>
     <td width="50%">
       <h3>Input</h3>
-      <video width="270">
-        <source src="examples/1.mp4" type="video/mp4">
-      </video>
-      <br>
-      <em>Original video (1.mp4)</em>
-    </td>
-    <td width="50%">
-      <h3>Output</h3>
-      <video width="270">
-        <source src="examples/result.mp4" type="video/mp4">
-      </video>
-      <br>
-      <em>Result with text overlays</em>
-    </td>
+      
+
+https://github.com/user-attachments/assets/876902d9-3bfb-4db3-a4d0-71849f7ff1b7
+
+
+   <td width="50%">
+      <h3>Result</h3>
+     
+
+https://github.com/user-attachments/assets/740011e3-79bb-4d4d-b541-92d1ea3907be
+
+
   </tr>
 </table>
 
-##### *💡 You can find all these example files in the `examples` directory.*
+#### *💡 You can find all these example files in the `examples` directory.*
 
 ## Quick Start 🚀
 
