@@ -1,0 +1,249 @@
+{
+	"info": {
+		"_postman_id": "02a1bb3c-7d2a-407c-8947-6b311a92446e",
+		"name": "FFmux",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "13600079",
+		"_collection_link": "https://banausta.postman.co/workspace/Banausta~e5b34a2e-1e8f-4f56-9f0b-4bc0a869ccd0/collection/13600079-02a1bb3c-7d2a-407c-8947-6b311a92446e?action=share&source=collection_link&creator=13600079"
+	},
+	"item": [
+		{
+			"name": "New Render Process",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"resolution\": \"1080x1920\",\n  \"quality\": \"23\",\n  \"extension\": \"mp4\",\n\n  \"timeline\": [\n    {\n      \"type\": \"video\",\n      \"filename\": \"1.mp4\",\n      \"cut\": [0, 4],\n      \"scaling\": \"cover\",\n      \"volume\": 0\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"Basic Style\",\n      \"style\": \"basic\",\n      \"position\": \"top-center\",\n      \"startTime\": 0,\n      \"duration\": 4\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"Hayat bazen seni,\",\n      \"style\": \"basic\",\n      \"position\": \"middle-center\",\n      \"startTime\": 0,\n      \"duration\": 1.5,\n      \"fontSize\": 84\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"sanki hiçbir şey yoluna girmeyecekmiş gibi sınar.\",\n      \"style\": \"basic\",\n      \"position\": \"middle-center\",\n      \"startTime\": 1.5,\n      \"duration\": 3.5,\n      \"fontSize\": 48\n    },\n    {\n      \"type\": \"video\",\n      \"filename\": \"1.mp4\",\n      \"scaling\": \"contain\",\n      \"volume\": 0\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"Outlined Style\",\n      \"style\": \"outlined\",\n      \"position\": \"top-center\",\n      \"startTime\": 4,\n      \"duration\": 4\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"Ama unutma:\",\n      \"style\": \"outlined\",\n      \"position\": \"middle-center\",\n      \"startTime\": 5,\n      \"duration\": 1.5,\n      \"fontSize\": 96\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"Büyük değişimler,\",\n      \"style\": \"outlined\",\n      \"position\": \"middle-center\",\n      \"startTime\": 6.5,\n      \"duration\": 1,\n      \"fontSize\": 48\n    },\n    {\n      \"type\": \"video\",\n      \"filename\": \"1.mp4\",\n      \"scaling\": \"fill\",\n      \"volume\": 0\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"Dark Style\",\n      \"style\": \"dark\",\n      \"position\": \"top-center\",\n      \"startTime\": 8,\n      \"duration\": 4\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"genellikle sessizce başlar.\",\n      \"style\": \"dark\",\n      \"position\": \"middle-center\",\n      \"startTime\": 7.5,\n      \"duration\": 1.5,\n      \"fontSize\": 60\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"Gökyüzü ne kadar kapalı olursa olsun,\",\n      \"style\": \"dark\",\n      \"position\": \"middle-center\",\n      \"startTime\": 9.0,\n      \"duration\": 3,\n      \"fontSize\": 60\n    },\n    {\n      \"type\": \"video\",\n      \"filename\": \"1.mp4\",\n      \"scaling\": \"scale-down\",\n      \"volume\": 0\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"TikTok Style\",\n      \"style\": \"tiktok\",\n      \"position\": \"top-center\",\n      \"startTime\": 12,\n      \"duration\": 4\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"güneş bulutların ardında hâlâ parlar.\",\n      \"style\": \"tiktok\",\n      \"position\": \"middle-center\",\n      \"startTime\": 12,\n      \"duration\": 2,\n      \"fontSize\": 40\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"Yeter ki kalbini açık tut,\",\n      \"style\": \"tiktok\",\n      \"position\": \"middle-center\",\n      \"startTime\": 15,\n      \"duration\": 1,\n      \"fontSize\": 84\n    },\n    {\n      \"type\": \"video\",\n      \"filename\": \"1.mp4\",\n      \"scaling\": \"cover\",\n      \"volume\": 0\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"Subtitle Style\",\n      \"style\": \"subtitle\",\n      \"position\": \"top-center\",\n      \"startTime\": 16,\n      \"duration\": 4\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"sabırlı ol,\",\n      \"style\": \"subtitle\",\n      \"position\": \"middle-center\",\n      \"startTime\": 16.5,\n      \"duration\": 1,\n      \"fontSize\": 96\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"yoluna devam et.\",\n      \"style\": \"subtitle\",\n      \"position\": \"middle-center\",\n      \"startTime\": 18,\n      \"duration\": 1,\n      \"fontSize\": 84\n    },\n    {\n      \"type\": \"audio\",\n      \"filename\": \"1.mp3\",\n      \"startTime\": 0,\n      \"volume\": 80\n    },\n    {\n      \"type\": \"image\",\n      \"filename\": \"1.png\",\n      \"duration\": 5,\n      \"scaling\": \"cover\"\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"FFmux\",\n      \"style\": \"tiktok\",\n      \"position\": \"middle-center\",\n      \"startTime\": 20,\n      \"duration\": 2.5,\n      \"fontSize\": 120\n    },\n    {\n      \"type\": \"text\",\n      \"text\": \"ile yapıldı\",\n      \"style\": \"tiktok\",\n      \"position\": \"middle-center\",\n      \"startTime\": 22.5,\n      \"duration\": 2.5,\n      \"fontSize\": 96\n    }\n  ]\n} ",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/render",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"render"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Process Info",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/status/b8ce5c37-a552-4bf5-b76a-cd0c496830e9",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"status",
+						"b8ce5c37-a552-4bf5-b76a-cd0c496830e9"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Download Job",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/download/b8ce5c37-a552-4bf5-b76a-cd0c496830e9",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"download",
+						"b8ce5c37-a552-4bf5-b76a-cd0c496830e9"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Download Output File",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/outputs/9c872b15-8291-4307-8b2b-3b3cbbe1839d.mp4",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"outputs",
+						"9c872b15-8291-4307-8b2b-3b3cbbe1839d.mp4"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Upload File",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "/Users/muzafferkadir/Desktop/1.png"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:3000/upload",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"upload"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Search File",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/uploads",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"uploads"
+					],
+					"query": [
+						{
+							"key": "search",
+							"value": "text",
+							"disabled": true
+						},
+						{
+							"key": "extension",
+							"value": "mp4",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete File",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"filename\": \"1.png\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/uploads",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"uploads"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List Output Videos",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/outputs",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"outputs"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Output File",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"filename\": \"73293391-35d9-48b5-8bdd-31cf7a4d9cd9.mp4\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/outputs",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"outputs"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
