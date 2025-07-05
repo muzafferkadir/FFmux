@@ -263,8 +263,17 @@ app.post("/upload", upload.single("file"), (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
+    let finalFilename = req.file.filename;
+
+    if (req.body.filename) {
+      const oldPath = req.file.path;
+      const newPath = path.join(uploadDir, req.body.filename);
+      fs.renameSync(oldPath, newPath);
+      finalFilename = req.body.filename;
+    }
+
     res.json({
-      filename: req.file.filename,
+      filename: finalFilename,
       size: req.file.size,
       mimetype: req.file.mimetype
     });
